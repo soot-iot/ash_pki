@@ -42,7 +42,7 @@ defmodule AshPki.Changes.IssueCertificate do
         |> Ash.Changeset.force_change_attribute(:not_before, not_before)
         |> Ash.Changeset.force_change_attribute(:not_after, not_after)
         |> Ash.Changeset.force_change_attribute(:status, :active)
-        |> Ash.Changeset.force_change_attribute(:key_strategy, :software)
+        |> Ash.Changeset.force_change_attribute(:provenance, :issued)
       else
         {:error, reason} ->
           Ash.Changeset.add_error(changeset,

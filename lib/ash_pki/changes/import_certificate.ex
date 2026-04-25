@@ -27,7 +27,7 @@ defmodule AshPki.Changes.ImportCertificate do
         |> Ash.Changeset.force_change_attribute(:not_before, not_before)
         |> Ash.Changeset.force_change_attribute(:not_after, not_after)
         |> Ash.Changeset.force_change_attribute(:status, :active)
-        |> Ash.Changeset.force_change_attribute(:key_strategy, :imported)
+        |> Ash.Changeset.force_change_attribute(:provenance, :imported)
       else
         {:error, reason} ->
           Ash.Changeset.add_error(changeset,

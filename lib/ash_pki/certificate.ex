@@ -58,10 +58,12 @@ defmodule AshPki.Certificate do
 
     attribute :revoked_at, :utc_datetime_usec, public?: true
 
-    attribute :key_strategy, :atom do
-      constraints one_of: [:software, :pkcs11, :kms, :imported]
-      default :software
+    attribute :provenance, :atom do
+      constraints one_of: [:issued, :imported]
+      default :issued
+      allow_nil? false
       public? true
+      description "Whether this row was minted by `issue` or by `import_certificate`."
     end
 
     attribute :metadata, :map, public?: true, default: %{}
