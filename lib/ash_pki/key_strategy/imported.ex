@@ -48,26 +48,20 @@ defmodule AshPki.KeyStrategy.Imported do
 
   @impl true
   def import_public(cert_pem, opts) when is_binary(cert_pem) do
-    with [_ | _] = entries <- :public_key.pem_decode(cert_pem),
-         {:Certificate, _, _} = entry <- List.last(entries),
-         cert <- :public_key.pem_entry_decode(entry) do
-      public =
-        X509.Certificate.public_key(
-          :public_key.pkix_decode_cert(:public_key.pkix_encode(:Certificate, cert, :plain), :otp)
-        )
+    case X509.Certificate.from_pem(cert_pem) do
+      {:ok, cert} ->
+        public = X509.Certificate.public_key(cert)
 
-      {:ok,
-       %{
-         "type" => "imported",
-         "public_key_pem" => X509.PublicKey.to_pem(public),
-         "vendor" => Keyword.get(opts, :vendor, "custom") |> to_string(),
-         "vendor_meta" => Keyword.get(opts, :vendor_meta)
-       }}
-    else
-      [] -> {:error, :no_pem_entries}
-      _ -> {:error, :invalid_certificate_pem}
+        {:ok,
+         %{
+           "type" => "imported",
+           "public_key_pem" => X509.PublicKey.to_pem(public),
+           "vendor" => Keyword.get(opts, :vendor, "custom") |> to_string(),
+           "vendor_meta" => Keyword.get(opts, :vendor_meta)
+         }}
+
+      {:error, reason} ->
+        {:error, {:invalid_certificate_pem, reason}}
     end
-  rescue
-    error -> {:error, error}
   end
 end
