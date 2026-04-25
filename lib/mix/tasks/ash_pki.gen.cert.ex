@@ -72,11 +72,6 @@ defmodule Mix.Tasks.AshPki.Gen.Cert do
     )
   end
 
-  # Use Application.ensure_all_started/1 in tests; in tasks we rely on app.start.
-  # Suppress unused-warning helper if Mix.shell adds noise.
-  @doc false
-  def __ensure_started__, do: Application.ensure_all_started(:ash_pki)
-
   defp parse_san("dns:" <> name), do: name
   defp parse_san("uri:" <> uri), do: {:uri, uri}
 

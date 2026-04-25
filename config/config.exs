@@ -1,8 +1,7 @@
 import Config
 
-# Each app may extend or override this in its own config.
-# In the umbrella we keep this minimal so each library remains usable
-# standalone outside the workspace.
+# Kept minimal: consumers compose AshPki.Domain alongside their own
+# without this config dictating the full :ash_domains list.
 
 config :ash_pki,
   ash_domains: [AshPki.Domain]
