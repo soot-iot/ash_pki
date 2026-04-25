@@ -38,8 +38,11 @@ defmodule AshPki.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*),
-      links: %{"GitHub" => @source_url}
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
+      }
     ]
   end
 
@@ -47,7 +50,7 @@ defmodule AshPki.MixProject do
     [
       main: "readme",
       source_ref: "v#{@version}",
-      extras: ["README.md"]
+      extras: ["README.md", "CHANGELOG.md"]
     ]
   end
 
