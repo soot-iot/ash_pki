@@ -1,14 +1,11 @@
 defmodule AshPki.Plug.MTLSTest do
-  use ExUnit.Case, async: false
+  use AshPki.DataCase, async: false
   import Plug.Test
   import Plug.Conn
 
   alias AshPki.Plug.MTLS
-  alias AshPki.Test.Factories
 
   setup do
-    Factories.reset_ets!()
-
     root = Factories.fresh_root!("mtls-root")
     intermediate = Factories.fresh_intermediate!(root.id, "mtls-int")
     {private, leaf} = Factories.issue_cert!(intermediate.id, "/CN=mtls-test-client")

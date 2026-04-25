@@ -1,12 +1,5 @@
 defmodule AshPki.CertificateAuthorityTest do
-  use ExUnit.Case, async: false
-
-  alias AshPki.Test.Factories
-
-  setup do
-    Factories.reset_ets!()
-    :ok
-  end
+  use AshPki.DataCase, async: false
 
   test "create_root produces a self-signed CA cert" do
     ca = Factories.fresh_root!("acme-root")

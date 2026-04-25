@@ -1,10 +1,7 @@
 defmodule AshPki.CertificateTest do
-  use ExUnit.Case, async: false
-
-  alias AshPki.Test.Factories
+  use AshPki.DataCase, async: false
 
   setup do
-    Factories.reset_ets!()
     root = Factories.fresh_root!()
     intermediate = Factories.fresh_intermediate!(root.id)
     {:ok, root: root, intermediate: intermediate}
