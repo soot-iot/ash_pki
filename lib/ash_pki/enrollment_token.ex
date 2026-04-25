@@ -7,8 +7,15 @@ defmodule AshPki.EnrollmentToken do
   certificate, transitioning a device into service) lives in whatever
   IoT/application layer wraps `ash_pki`.
 
-  The token is stored hashed; the plaintext is shown exactly once to the
-  caller of `mint/2`.
+  The token is stored hashed. The plaintext is returned exactly once on
+  the result of `mint/3` via Ash resource metadata:
+
+      {:ok, token} = AshPki.EnrollmentToken.mint(:device, "serial-001", at)
+      Ash.Resource.get_metadata(token, :plaintext_token)
+      # => "..."  (URL-safe base64, 32 random bytes)
+
+  The plaintext is never persisted; once the result is dropped it cannot
+  be recovered.
   """
 
   use Ash.Resource,
@@ -62,17 +69,10 @@ defmodule AshPki.EnrollmentToken do
     defaults [:read, :destroy]
 
     create :mint do
-      description "Mint a new enrollment token. Returns the plaintext via the `:token` argument echo."
+      description "Mint a new enrollment token. The plaintext is returned via Ash.Resource.get_metadata(record, :plaintext_token)."
       accept [:scope, :scope_ref, :valid_until]
 
-      change before_action(fn changeset, _ ->
-               token = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
-               hash = :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
-
-               changeset
-               |> Ash.Changeset.force_change_attribute(:token_hash, hash)
-               |> Ash.Changeset.put_context(:plaintext_token, token)
-             end)
+      change AshPki.Changes.MintEnrollmentToken
     end
 
     update :consume do
