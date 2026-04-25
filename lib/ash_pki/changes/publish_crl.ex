@@ -27,10 +27,7 @@ defmodule AshPki.Changes.PublishCRL do
         |> Ash.Changeset.force_change_attribute(:this_update, X509.CRL.this_update(crl))
         |> Ash.Changeset.force_change_attribute(:next_update, X509.CRL.next_update(crl))
         |> Ash.Changeset.force_change_attribute(:status, :current)
-        |> Ash.Changeset.after_action(fn _changeset, record ->
-          supersede_previous(ca_id, record.id)
-          {:ok, record}
-        end)
+        |> Ash.Changeset.after_action(&supersede_previous_after_insert(&1, &2, ca_id))
       else
         {:error, reason} ->
           Ash.Changeset.add_error(changeset,
@@ -77,6 +74,11 @@ defmodule AshPki.Changes.PublishCRL do
       [] -> 1
       seqs -> Enum.max(seqs) + 1
     end
+  end
+
+  defp supersede_previous_after_insert(_changeset, record, ca_id) do
+    supersede_previous(ca_id, record.id)
+    {:ok, record}
   end
 
   defp supersede_previous(ca_id, current_id) do

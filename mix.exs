@@ -17,7 +17,10 @@ defmodule AshPki.MixProject do
       package: package(),
       source_url: @source_url,
       docs: docs(),
-      aliases: aliases()
+      aliases: aliases(),
+      dialyzer: [
+        plt_add_apps: [:mix, :ex_unit, :plug, :public_key, :crypto, :ssl]
+      ]
     ]
   end
 
@@ -56,7 +59,8 @@ defmodule AshPki.MixProject do
 
   defp aliases do
     [
-      format: "format --migrate"
+      format: "format --migrate",
+      credo: "credo --strict"
     ]
   end
 
@@ -65,7 +69,14 @@ defmodule AshPki.MixProject do
       {:ash, "~> 3.24"},
       {:x509, "~> 0.9"},
       {:plug, "~> 1.19"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+
+      # Dev / test
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.34", only: [:dev], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
     ]
   end
 end
