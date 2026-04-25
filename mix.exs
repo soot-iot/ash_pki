@@ -19,7 +19,11 @@ defmodule AshPki.MixProject do
       docs: docs(),
       aliases: aliases(),
       dialyzer: [
-        plt_add_apps: [:mix, :ex_unit, :plug, :public_key, :crypto, :ssl]
+        plt_add_apps: [:mix, :ex_unit, :plug, :public_key, :crypto, :ssl],
+        plt_core_path: "priv/plts",
+        plt_local_path: "priv/plts",
+        ignore_warnings: ".dialyzer_ignore.exs",
+        list_unused_filters?: true
       ]
     ]
   end
