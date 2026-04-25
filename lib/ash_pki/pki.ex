@@ -112,7 +112,6 @@ defmodule AshPki.PKI do
 
   defp parse_validity_time({:utcTime, charlist}), do: from_asn1_time(charlist, :utc)
   defp parse_validity_time({:generalTime, charlist}), do: from_asn1_time(charlist, :general)
-  defp parse_validity_time({:utcTime, charlist, _}), do: from_asn1_time(charlist, :utc)
 
   defp from_asn1_time(charlist, kind) do
     str = List.to_string(charlist)
@@ -164,17 +163,7 @@ defmodule AshPki.PKI do
   def verify(leaf, trusted_roots, intermediates) do
     leaf_der = X509.Certificate.to_der(leaf)
     intermediate_ders = Enum.map(intermediates, &X509.Certificate.to_der/1)
-    chain_ders = intermediate_ders ++ [leaf_der]
-    trusted_ders = Enum.map(trusted_roots, &X509.Certificate.to_der/1)
-
-    case :public_key.pkix_path_validation(hd(trusted_ders), chain_ders, []) do
-      {:ok, _} ->
-        # Try with each trusted root if the first didn't sign anything in the chain.
-        {:ok, [leaf | intermediates] ++ [hd(trusted_roots)]}
-
-      {:error, _reason} ->
-        try_each_root(leaf, leaf_der, trusted_roots, intermediate_ders)
-    end
+    try_each_root(leaf, leaf_der, trusted_roots, intermediate_ders)
   end
 
   defp try_each_root(_leaf, _leaf_der, [], _intermediates),
