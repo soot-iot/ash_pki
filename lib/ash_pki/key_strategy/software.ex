@@ -50,8 +50,6 @@ defmodule AshPki.KeyStrategy.Software do
     }
 
     {:ok, descriptor}
-  rescue
-    error -> {:error, error}
   end
 
   @impl true
@@ -87,8 +85,6 @@ defmodule AshPki.KeyStrategy.Software do
 
       {:ok, cert}
     end
-  rescue
-    error -> {:error, error}
   end
 
   @impl true
@@ -109,8 +105,6 @@ defmodule AshPki.KeyStrategy.Software do
 
       {:ok, cert}
     end
-  rescue
-    error -> {:error, error}
   end
 
   @impl true
@@ -124,8 +118,6 @@ defmodule AshPki.KeyStrategy.Software do
 
       {:ok, crl}
     end
-  rescue
-    error -> {:error, error}
   end
 
   @impl true
