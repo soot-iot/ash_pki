@@ -2,6 +2,7 @@ defmodule AshPki.MixProject do
   use Mix.Project
 
   @version "0.1.0"
+  @source_url "https://github.com/lawik/ash_pki"
 
   def project do
     [
@@ -10,16 +11,19 @@ defmodule AshPki.MixProject do
       elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      consolidate_protocols: Mix.env() != :test,
+      consolidate_protocols: Mix.env() == :prod,
       deps: deps(),
       description: description(),
-      package: package()
+      package: package(),
+      source_url: @source_url,
+      docs: docs(),
+      aliases: aliases()
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger, :crypto, :public_key, :ssl],
+      extra_applications: [:logger, :ssl],
       mod: {AshPki.Application, []}
     ]
   end
@@ -34,7 +38,22 @@ defmodule AshPki.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{}
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE*),
+      links: %{"GitHub" => @source_url}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      source_ref: "v#{@version}",
+      extras: ["README.md"]
+    ]
+  end
+
+  defp aliases do
+    [
+      format: "format --migrate"
     ]
   end
 
