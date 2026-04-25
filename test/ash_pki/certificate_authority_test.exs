@@ -15,7 +15,10 @@ defmodule AshPki.CertificateAuthorityTest do
     assert ca.status == :active
     assert ca.fingerprint =~ ~r/^[0-9a-f]{64}$/
     assert {:ok, cert} = X509.Certificate.from_pem(ca.certificate_pem)
-    assert cert |> X509.Certificate.subject() |> X509.RDNSequence.get_attr(:commonName) == ["acme-root"]
+
+    assert cert |> X509.Certificate.subject() |> X509.RDNSequence.get_attr(:commonName) == [
+             "acme-root"
+           ]
   end
 
   test "create_intermediate is signed by the parent and chains to it" do

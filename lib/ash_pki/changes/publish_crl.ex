@@ -41,7 +41,11 @@ defmodule AshPki.Changes.PublishCRL do
     end)
   end
 
-  defp build_entry(%AshPki.Certificate{serial: serial, revoked_at: revoked_at, revocation_reason: reason}) do
+  defp build_entry(%AshPki.Certificate{
+         serial: serial,
+         revoked_at: revoked_at,
+         revocation_reason: reason
+       }) do
     revoked_at = revoked_at || DateTime.utc_now()
     serial_int = String.to_integer(serial)
 
@@ -68,6 +72,7 @@ defmodule AshPki.Changes.PublishCRL do
 
   defp next_sequence(ca_id) do
     {:ok, all} = AshPki.RevocationList.for_ca(ca_id, authorize?: false)
+
     case Enum.map(all, & &1.sequence) do
       [] -> 1
       seqs -> Enum.max(seqs) + 1

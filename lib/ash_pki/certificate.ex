@@ -52,6 +52,7 @@ defmodule AshPki.Certificate do
                     :privilege_withdrawn,
                     :aa_compromise
                   ]
+
       public? true
     end
 

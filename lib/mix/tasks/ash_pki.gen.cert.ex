@@ -67,7 +67,9 @@ defmodule Mix.Tasks.AshPki.Gen.Cert do
     write!(out, "#{name}.csr.pem", csr_pem)
     write!(out, "#{name}.cert.pem", cert.certificate_pem)
 
-    Mix.shell().info("==> issued cert for #{subject} (serial #{cert.serial}, fp #{cert.fingerprint})")
+    Mix.shell().info(
+      "==> issued cert for #{subject} (serial #{cert.serial}, fp #{cert.fingerprint})"
+    )
   end
 
   # Use Application.ensure_all_started/1 in tests; in tasks we rely on app.start.
@@ -77,10 +79,12 @@ defmodule Mix.Tasks.AshPki.Gen.Cert do
 
   defp parse_san("dns:" <> name), do: name
   defp parse_san("uri:" <> uri), do: {:uri, uri}
+
   defp parse_san("ip:" <> ip) do
     {:ok, parsed} = :inet.parse_address(String.to_charlist(ip))
     {:ip, parsed}
   end
+
   defp parse_san(other), do: other
 
   defp write!(out, name, contents) do

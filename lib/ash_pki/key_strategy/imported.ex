@@ -51,7 +51,10 @@ defmodule AshPki.KeyStrategy.Imported do
     with [_ | _] = entries <- :public_key.pem_decode(cert_pem),
          {:Certificate, _, _} = entry <- List.last(entries),
          cert <- :public_key.pem_entry_decode(entry) do
-      public = X509.Certificate.public_key(:public_key.pkix_decode_cert(:public_key.pkix_encode(:Certificate, cert, :plain), :otp))
+      public =
+        X509.Certificate.public_key(
+          :public_key.pkix_decode_cert(:public_key.pkix_encode(:Certificate, cert, :plain), :otp)
+        )
 
       {:ok,
        %{

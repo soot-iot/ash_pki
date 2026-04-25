@@ -54,7 +54,9 @@ defmodule AshPki.Changes.IssueCertificate do
   end
 
   defp ensure_active(%AshPki.CertificateAuthority{status: :active}), do: :ok
-  defp ensure_active(%AshPki.CertificateAuthority{status: status}), do: {:error, {:ca_not_active, status}}
+
+  defp ensure_active(%AshPki.CertificateAuthority{status: status}),
+    do: {:error, {:ca_not_active, status}}
 
   defp decode_csr(pem) when is_binary(pem) do
     case X509.CSR.from_pem(pem) do
@@ -91,10 +93,8 @@ defmodule AshPki.Changes.IssueCertificate do
       hash: :sha256,
       extensions: [
         basic_constraints: X509.Certificate.Extension.basic_constraints(false),
-        key_usage:
-          X509.Certificate.Extension.key_usage([:digitalSignature, :keyEncipherment]),
-        ext_key_usage:
-          X509.Certificate.Extension.ext_key_usage([:clientAuth, :serverAuth]),
+        key_usage: X509.Certificate.Extension.key_usage([:digitalSignature, :keyEncipherment]),
+        ext_key_usage: X509.Certificate.Extension.ext_key_usage([:clientAuth, :serverAuth]),
         subject_key_identifier: true,
         authority_key_identifier: true
       ]

@@ -130,9 +130,7 @@ defmodule AshPki.PKI do
           end
 
         {:ok, dt, _} =
-          DateTime.from_iso8601(
-            "#{year}-#{mm}-#{dd}T#{h}:#{mi}:#{s}Z"
-          )
+          DateTime.from_iso8601("#{year}-#{mm}-#{dd}T#{h}:#{mi}:#{s}Z")
 
         dt
 
@@ -142,9 +140,7 @@ defmodule AshPki.PKI do
           mi::binary-size(2), s::binary-size(2), _::binary>> = str
 
         {:ok, dt, _} =
-          DateTime.from_iso8601(
-            "#{yyyy}-#{mm}-#{dd}T#{h}:#{mi}:#{s}Z"
-          )
+          DateTime.from_iso8601("#{yyyy}-#{mm}-#{dd}T#{h}:#{mi}:#{s}Z")
 
         dt
     end

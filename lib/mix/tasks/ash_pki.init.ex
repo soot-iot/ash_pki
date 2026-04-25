@@ -42,6 +42,7 @@ defmodule Mix.Tasks.AshPki.Init do
     File.mkdir_p!(out)
 
     Mix.shell().info("==> Generating root CA: #{root_cn}")
+
     {:ok, root} =
       AshPki.CertificateAuthority.create_root(
         "root",
@@ -50,6 +51,7 @@ defmodule Mix.Tasks.AshPki.Init do
       )
 
     Mix.shell().info("==> Generating intermediate CA: #{intermediate_cn}")
+
     {:ok, intermediate} =
       AshPki.CertificateAuthority.create_intermediate(
         "intermediate",

@@ -79,6 +79,7 @@ defmodule AshPki.EnrollmentToken do
     read :find_by_plaintext do
       argument :token, :string, allow_nil?: false
       get? true
+
       prepare fn query, _ ->
         plaintext = Ash.Query.get_argument(query, :token)
         hash = :crypto.hash(:sha256, plaintext) |> Base.encode16(case: :lower)
