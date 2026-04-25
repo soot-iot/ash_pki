@@ -44,6 +44,10 @@ defmodule AshPki.RevocationList do
     update_timestamp :updated_at
   end
 
+  identities do
+    identity :unique_ca_sequence, [:ca_id, :sequence], pre_check_with: AshPki.Domain
+  end
+
   relationships do
     belongs_to :ca, AshPki.CertificateAuthority do
       public? true
@@ -80,6 +84,7 @@ defmodule AshPki.RevocationList do
 
     update :supersede do
       accept []
+      require_atomic? false
       change set_attribute(:status, :superseded)
     end
   end

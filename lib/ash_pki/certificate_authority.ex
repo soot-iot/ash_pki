@@ -65,6 +65,11 @@ defmodule AshPki.CertificateAuthority do
     update_timestamp :updated_at
   end
 
+  identities do
+    identity :unique_name, [:name], pre_check_with: AshPki.Domain
+    identity :unique_fingerprint, [:fingerprint], pre_check_with: AshPki.Domain
+  end
+
   relationships do
     belongs_to :parent, __MODULE__ do
       public? true
@@ -123,6 +128,7 @@ defmodule AshPki.CertificateAuthority do
     update :rotate do
       description "Mark this CA as rotated. Cross-signing is a follow-up step."
       accept []
+      require_atomic? false
       change set_attribute(:status, :rotated)
     end
   end

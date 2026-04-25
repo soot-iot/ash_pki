@@ -70,6 +70,11 @@ defmodule AshPki.Certificate do
     update_timestamp :updated_at
   end
 
+  identities do
+    identity :unique_fingerprint, [:fingerprint], pre_check_with: AshPki.Domain
+    identity :unique_serial_per_issuer, [:issuer_id, :serial], pre_check_with: AshPki.Domain
+  end
+
   relationships do
     belongs_to :issuer, AshPki.CertificateAuthority do
       public? true
@@ -131,6 +136,7 @@ defmodule AshPki.Certificate do
     update :revoke do
       description "Mark a certificate revoked. CRL regeneration is a separate step."
       accept []
+      require_atomic? false
 
       argument :reason, :atom do
         constraints one_of: [

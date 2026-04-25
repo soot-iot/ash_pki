@@ -54,6 +54,10 @@ defmodule AshPki.EnrollmentToken do
     update_timestamp :updated_at
   end
 
+  identities do
+    identity :unique_token_hash, [:token_hash], pre_check_with: AshPki.Domain
+  end
+
   actions do
     defaults [:read, :destroy]
 
@@ -73,6 +77,7 @@ defmodule AshPki.EnrollmentToken do
 
     update :consume do
       accept []
+      require_atomic? false
       change set_attribute(:used_at, &DateTime.utc_now/0)
     end
 
