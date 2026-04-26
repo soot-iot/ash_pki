@@ -75,6 +75,7 @@ defmodule AshPki.MixProject do
       {:plug, "~> 1.19"},
       {:jason, "~> 1.4"},
       {:nimble_csv, "~> 1.3"},
+      {:igniter, "~> 0.6", optional: true},
 
       # Dev / test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
