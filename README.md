@@ -34,9 +34,40 @@ material is stored and used:
   opaque so this can be added later without schema changes.)
 * `Imported` — public-only entries for pre-provisioned secure-element keys
   (ATECC, OPTIGA, EdgeLock). The backend never holds signing material.
-* `PKCS11`, `KMS` — interface only; implementations are deferred. The
-  callbacks return `:not_implemented` and the modules document what their
-  descriptors will eventually carry.
+  See **Bulk import** below for the manufacturing-line flow.
+* `PKCS11` — HSM-backed CA signing keys via Erlang's `:crypto.engine_load`
+  bridge to OpenSSL's pkcs11 engine. The descriptor stores the module
+  path, key id (PKCS#11 URI), algorithm, cached public-key PEM, and the
+  name of the env var holding the PIN — never the PIN itself. Key
+  generation is intentionally external: provision keys with
+  `pkcs11-tool --keypairgen` (or vendor tooling) and import the
+  descriptor. SoftHSM2 works as a local test target.
+* `KMS` — interface only; implementation deferred.
+
+## Bulk import
+
+`AshPki.Certificate.Bulk` and `mix ash_pki.import_certs` handle the
+production-line flow where a silicon vendor (ATECC, OPTIGA, EdgeLock)
+hands over a manifest of pre-issued device certs:
+
+```sh
+# CSV: serial,certificate_pem,vendor[,vendor_meta]
+mix ash_pki.import_certs --issuer intermediate --csv vendor_manifest.csv
+
+# Concatenated PEM bundle
+mix ash_pki.import_certs --issuer intermediate --bundle device_certs.pem \
+                         --vendor atecc608
+
+# Single PEM
+mix ash_pki.import_certs --issuer intermediate --cert device_001.pem \
+                         --vendor optiga_trust_m
+```
+
+Vendor-specific manifests almost always need a one-time conversion to
+the CSV shape; that conversion is the operator's job (or the silicon
+vendor's tooling). Rows that fail validation are skipped and reported
+with their (line / cert index, reason) — the rest of the manifest is
+not aborted.
 
 ## Demo
 
