@@ -4,19 +4,30 @@ defmodule AshPki.TrustStore do
   @moduledoc """
   Aggregates trusted CA certificates for mTLS validation.
 
-  The trust store is read from the `AshPki.CertificateAuthority` resource by
-  default (every active CA is implicitly trusted). Callers can also pin
-  additional roots from PEM files for environments where some trust anchors
-  are not managed through this app.
+  By default the trust store reads from `AshPki.CertificateAuthority` (every
+  active CA is implicitly trusted) and adds any roots pinned via
+  configuration. Operators with their own `CertificateAuthority` resource
+  pass it via the `:certificate_authority` option:
+
+      AshPki.TrustStore.trust_anchors(certificate_authority: MyApp.CertificateAuthority)
   """
+
+  @default_ca AshPki.CertificateAuthority
 
   @doc """
   All active CAs as OTPCertificate records.
+
+  Options:
+
+    * `:certificate_authority` — the CA resource module to read from.
+      Defaults to `AshPki.CertificateAuthority`.
   """
-  @spec active_cas() :: [X509.Certificate.t()]
-  def active_cas do
+  @spec active_cas(keyword()) :: [X509.Certificate.t()]
+  def active_cas(opts \\ []) do
+    ca_module = Keyword.get(opts, :certificate_authority, @default_ca)
+
     {:ok, cas} =
-      AshPki.CertificateAuthority
+      ca_module
       |> Ash.Query.filter(status == :active)
       |> Ash.read(authorize?: false)
 
@@ -55,10 +66,11 @@ defmodule AshPki.TrustStore do
   end
 
   @doc """
-  Combined trust anchors (active CAs + pinned roots).
+  Combined trust anchors (active CAs + pinned roots). Same options as
+  `active_cas/1`.
   """
-  @spec trust_anchors() :: [X509.Certificate.t()]
-  def trust_anchors do
-    Enum.uniq_by(active_cas() ++ pinned_roots(), &X509.Certificate.to_der/1)
+  @spec trust_anchors(keyword()) :: [X509.Certificate.t()]
+  def trust_anchors(opts \\ []) do
+    Enum.uniq_by(active_cas(opts) ++ pinned_roots(), &X509.Certificate.to_der/1)
   end
 end

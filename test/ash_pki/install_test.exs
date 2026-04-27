@@ -16,39 +16,15 @@ defmodule Mix.Tasks.AshPki.InstallTest do
     end
   end
 
-  describe "generated modules" do
-    test "creates the Pki domain module" do
-      setup_project()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> assert_creates("lib/test/pki.ex")
-    end
-
-    test "creates the CertificateAuthority resource stub" do
-      setup_project()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> assert_creates("lib/test/pki/certificate_authority.ex")
-    end
-
-    test "creates the Certificate resource stub" do
-      setup_project()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> assert_creates("lib/test/pki/certificate.ex")
-    end
-
-    test "creates the RevocationList resource stub" do
-      setup_project()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> assert_creates("lib/test/pki/revocation_list.ex")
-    end
-
-    test "Certificate resource declares the Pki domain" do
+  describe "domain registration" do
+    test "registers AshPki.Domain in operator's :ash_domains" do
       result =
         setup_project()
         |> Igniter.compose_task("ash_pki.install", [])
 
-      diff = diff(result, only: "lib/test/pki/certificate.ex")
-      assert diff =~ "use Ash.Resource"
-      assert diff =~ "Test.Pki"
+      diff = diff(result, only: "config/config.exs")
+      assert diff =~ "AshPki.Domain"
+      assert diff =~ "ash_domains:"
     end
   end
 
@@ -68,14 +44,6 @@ defmodule Mix.Tasks.AshPki.InstallTest do
       + |  import_deps: [:ash_pki]
       """)
     end
-
-    test "is idempotent" do
-      setup_project()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> apply_igniter!()
-      |> Igniter.compose_task("ash_pki.install", [])
-      |> assert_unchanged(".formatter.exs")
-    end
   end
 
   describe "config" do
@@ -91,6 +59,24 @@ defmodule Mix.Tasks.AshPki.InstallTest do
     end
   end
 
+  describe "idempotency" do
+    test "running twice is a no-op on .formatter.exs" do
+      setup_project()
+      |> Igniter.compose_task("ash_pki.install", [])
+      |> apply_igniter!()
+      |> Igniter.compose_task("ash_pki.install", [])
+      |> assert_unchanged(".formatter.exs")
+    end
+
+    test "running twice is a no-op on config/config.exs" do
+      setup_project()
+      |> Igniter.compose_task("ash_pki.install", [])
+      |> apply_igniter!()
+      |> Igniter.compose_task("ash_pki.install", [])
+      |> assert_unchanged("config/config.exs")
+    end
+  end
+
   describe "next-steps notice" do
     test "always emits an ash_pki installed notice" do
       igniter =
@@ -98,6 +84,14 @@ defmodule Mix.Tasks.AshPki.InstallTest do
         |> Igniter.compose_task("ash_pki.install", [])
 
       assert Enum.any?(igniter.notices, &(&1 =~ "ash_pki installed"))
+    end
+
+    test "notice mentions ash_pki.init for first-time CA bootstrap" do
+      igniter =
+        setup_project()
+        |> Igniter.compose_task("ash_pki.install", [])
+
+      assert Enum.any?(igniter.notices, &(&1 =~ "ash_pki.init"))
     end
   end
 end

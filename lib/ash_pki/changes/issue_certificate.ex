@@ -12,8 +12,10 @@ defmodule AshPki.Changes.IssueCertificate do
       validity_days = Ash.Changeset.get_argument(changeset, :validity_days) || 90
       san_overrides = Ash.Changeset.get_argument(changeset, :subject_alt_names) || []
 
-      with {:ok, issuer} <-
-             Ash.get(AshPki.CertificateAuthority, issuer_id, authorize?: false),
+      ca_module =
+        AshPki.Resource.Certificate.Info.pki_certificate_authority!(changeset.resource)
+
+      with {:ok, issuer} <- Ash.get(ca_module, issuer_id, authorize?: false),
            :ok <- ensure_active(issuer),
            {:ok, csr} <- decode_csr(csr_pem),
            true <- X509.CSR.valid?(csr) || {:error, :invalid_csr_signature},
@@ -53,10 +55,8 @@ defmodule AshPki.Changes.IssueCertificate do
     end)
   end
 
-  defp ensure_active(%AshPki.CertificateAuthority{status: :active}), do: :ok
-
-  defp ensure_active(%AshPki.CertificateAuthority{status: status}),
-    do: {:error, {:ca_not_active, status}}
+  defp ensure_active(%{status: :active}), do: :ok
+  defp ensure_active(%{status: status}), do: {:error, {:ca_not_active, status}}
 
   defp decode_csr(pem) when is_binary(pem) do
     case X509.CSR.from_pem(pem) do

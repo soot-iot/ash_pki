@@ -18,8 +18,7 @@ defmodule AshPki.Changes.GenerateIntermediateCA do
         bits: Ash.Changeset.get_argument(changeset, :bits) || 2048
       ]
 
-      with {:ok, parent} <-
-             Ash.get(AshPki.CertificateAuthority, parent_id, authorize?: false),
+      with {:ok, parent} <- Ash.get(changeset.resource, parent_id, authorize?: false),
            {:ok, descriptor} <- strategy.generate(key_opts),
            {:ok, intermediate_private} <- private_key_from_descriptor(strategy, descriptor),
            {:ok, parent_cert} <- decode_cert(parent.certificate_pem),
