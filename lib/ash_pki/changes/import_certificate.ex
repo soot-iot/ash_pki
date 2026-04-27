@@ -8,9 +8,11 @@ defmodule AshPki.Changes.ImportCertificate do
       cert_pem = Ash.Changeset.get_argument(changeset, :certificate_pem)
       issuer_id = Ash.Changeset.get_argument(changeset, :issuer_id)
 
+      ca_module =
+        AshPki.Resource.Certificate.Info.pki_certificate_authority!(changeset.resource)
+
       with {:ok, cert} <- X509.Certificate.from_pem(cert_pem),
-           {:ok, issuer} <-
-             Ash.get(AshPki.CertificateAuthority, issuer_id, authorize?: false),
+           {:ok, issuer} <- Ash.get(ca_module, issuer_id, authorize?: false),
            {:ok, issuer_cert} <- X509.Certificate.from_pem(issuer.certificate_pem),
            :ok <- verify_chain(cert, issuer_cert) do
         fingerprint = AshPki.PKI.fingerprint(cert)

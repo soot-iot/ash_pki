@@ -8,17 +8,20 @@ defmodule AshPki.Changes.PublishCRL do
       ca_id = Ash.Changeset.get_argument(changeset, :ca_id)
       next_update_in_days = Ash.Changeset.get_argument(changeset, :next_update_in_days) || 7
 
-      with {:ok, ca} <-
-             Ash.get(AshPki.CertificateAuthority, ca_id, authorize?: false),
+      crl_module = changeset.resource
+      ca_module = AshPki.Resource.RevocationList.Info.pki_certificate_authority!(crl_module)
+      cert_module = AshPki.Resource.RevocationList.Info.pki_certificate!(crl_module)
+
+      with {:ok, ca} <- Ash.get(ca_module, ca_id, authorize?: false),
            {:ok, issuer_cert} <- X509.Certificate.from_pem(ca.certificate_pem),
-           {:ok, revoked} <- AshPki.Certificate.revoked_for_issuer(ca_id, authorize?: false),
+           {:ok, revoked} <- cert_module.revoked_for_issuer(ca_id, authorize?: false),
            strategy <- AshPki.key_strategy(ca.key_strategy),
            entries <- Enum.map(revoked, &build_entry/1),
            {:ok, crl} <-
              strategy.sign_crl(ca.key_descriptor, issuer_cert, entries,
                next_update_in_days: next_update_in_days
              ) do
-        sequence = next_sequence(ca_id)
+        sequence = next_sequence(crl_module, ca_id)
 
         changeset
         |> Ash.Changeset.force_change_attribute(:ca_id, ca_id)
@@ -27,7 +30,7 @@ defmodule AshPki.Changes.PublishCRL do
         |> Ash.Changeset.force_change_attribute(:this_update, X509.CRL.this_update(crl))
         |> Ash.Changeset.force_change_attribute(:next_update, X509.CRL.next_update(crl))
         |> Ash.Changeset.force_change_attribute(:status, :current)
-        |> Ash.Changeset.after_action(&supersede_previous_after_insert(&1, &2, ca_id))
+        |> Ash.Changeset.after_action(&supersede_previous_after_insert(&1, &2, crl_module, ca_id))
       else
         {:error, reason} ->
           Ash.Changeset.add_error(changeset,
@@ -38,7 +41,7 @@ defmodule AshPki.Changes.PublishCRL do
     end)
   end
 
-  defp build_entry(%AshPki.Certificate{
+  defp build_entry(%{
          serial: serial,
          revoked_at: revoked_at,
          revocation_reason: reason
@@ -67,8 +70,8 @@ defmodule AshPki.Changes.PublishCRL do
   defp to_x509_reason(:privilege_withdrawn), do: :privilegeWithdrawn
   defp to_x509_reason(:aa_compromise), do: :aACompromise
 
-  defp next_sequence(ca_id) do
-    {:ok, all} = AshPki.RevocationList.for_ca(ca_id, authorize?: false)
+  defp next_sequence(crl_module, ca_id) do
+    {:ok, all} = crl_module.for_ca(ca_id, authorize?: false)
 
     case Enum.map(all, & &1.sequence) do
       [] -> 1
@@ -76,17 +79,17 @@ defmodule AshPki.Changes.PublishCRL do
     end
   end
 
-  defp supersede_previous_after_insert(_changeset, record, ca_id) do
-    supersede_previous(ca_id, record.id)
+  defp supersede_previous_after_insert(_changeset, record, crl_module, ca_id) do
+    supersede_previous(crl_module, ca_id, record.id)
     {:ok, record}
   end
 
-  defp supersede_previous(ca_id, current_id) do
-    {:ok, all} = AshPki.RevocationList.for_ca(ca_id, authorize?: false)
+  defp supersede_previous(crl_module, ca_id, current_id) do
+    {:ok, all} = crl_module.for_ca(ca_id, authorize?: false)
 
     Enum.each(all, fn rl ->
       if rl.id != current_id and rl.status == :current do
-        AshPki.RevocationList.supersede!(rl, authorize?: false)
+        crl_module.supersede!(rl, authorize?: false)
       end
     end)
   end

@@ -5,23 +5,100 @@ revocation lists, an enrollment-token resource, and an mTLS plug. The library
 is independent of any particular application layer — it deals in CAs, certs,
 keys, and trust stores.
 
-## Resources
+## Resources you own
 
-* `AshPki.CertificateAuthority` — root or intermediate CAs. Generates
-  keypairs and self-signs (root) or has its CSR signed by a parent
-  (intermediate).
-* `AshPki.Certificate` — issued or imported leaf certificates. Actions for
-  `issue` (sign a CSR), `import_certificate` (pre-provisioned device cert),
-  `revoke`.
-* `AshPki.RevocationList` — signed CRLs per CA, with a sequence number and a
-  current/superseded status.
-* `AshPki.EnrollmentToken` — short-lived bootstrap credential, hashed at
-  rest.
-* `AshPki.Plug.MTLS` — terminate mTLS in front of an Ash app. Reads the
-  peer cert from the SSL connection (or a configured header in
-  LB-termination mode), verifies the chain against the active trust
-  anchors, looks the cert up in `AshPki.Certificate`, and assigns the
-  verified peer to `conn.assigns.ash_pki_actor` for use by Ash policies.
+The four PKI primitives ship as `Ash.Resource` extensions. Apply them to
+your own resource modules so you can mix in custom fields, per-tenant
+scoping, policies, or a different data layer:
+
+```elixir
+defmodule MyApp.Certificate do
+  use Ash.Resource,
+    domain: MyApp.PKI,
+    data_layer: AshPostgres.DataLayer,
+    extensions: [AshPki.Resource.Certificate]
+
+  postgres do
+    table "certificates"
+    repo MyApp.Repo
+  end
+
+  pki do
+    certificate_authority MyApp.CertificateAuthority
+  end
+
+  attributes do
+    attribute :tenant_id, :uuid, public?: true
+    attribute :hardware_attestation, :map
+  end
+end
+
+defmodule MyApp.CertificateAuthority do
+  use Ash.Resource,
+    domain: MyApp.PKI,
+    data_layer: AshPostgres.DataLayer,
+    extensions: [AshPki.Resource.CertificateAuthority]
+
+  pki do
+    certificate MyApp.Certificate
+    revocation_list MyApp.RevocationList
+  end
+end
+
+defmodule MyApp.RevocationList do
+  use Ash.Resource,
+    domain: MyApp.PKI,
+    data_layer: AshPostgres.DataLayer,
+    extensions: [AshPki.Resource.RevocationList]
+
+  pki do
+    certificate_authority MyApp.CertificateAuthority
+    certificate MyApp.Certificate
+  end
+end
+```
+
+Each resource declares its siblings in a `pki do ... end` block — that
+is the only "registry" AshPki uses. Internal changes (`issue`,
+`import_certificate`, `publish` CRL) discover their siblings through
+`AshPki.Info` introspection of the resource being acted on. There is no
+application-global config to set, and you can run multiple independent
+PKI hierarchies in the same app (e.g. one per tenant) just by writing
+multiple sets of resources.
+
+The four extensions:
+
+* `AshPki.Resource.CertificateAuthority` — root + intermediate CAs.
+  Injects `create_root` / `create_intermediate` / `rotate` actions and
+  `:issued_certificates` / `:revocation_lists` has_many relationships.
+* `AshPki.Resource.Certificate` — leaf certs. Injects `issue` (sign a
+  CSR), `import_certificate` (pre-provisioned device cert), `revoke`.
+* `AshPki.Resource.RevocationList` — signed CRLs per CA with a sequence
+  number and a current/superseded status.
+* `AshPki.Resource.EnrollmentToken` — short-lived bootstrap credential,
+  hashed at rest. (No siblings; no `pki` block needed.)
+
+Anything you declare yourself (an attribute, an action, an identity, the
+`:issuer` relationship) takes precedence — the extensions use
+`add_new_*` builders that no-op when the entity already exists.
+
+If you don't need any customization, the library also ships
+zero-configuration defaults — `AshPki.Certificate`,
+`AshPki.CertificateAuthority`, `AshPki.RevocationList`, and
+`AshPki.EnrollmentToken` — backed by `Ash.DataLayer.Ets`. Every
+extension's `pki` options default to those modules, so the defaults work
+without anyone declaring a `pki` block.
+
+`AshPki.Plug.MTLS` terminates mTLS in front of an Ash app. It reads the
+peer cert from the SSL connection (or a configured header in
+LB-termination mode), verifies the chain against the active trust
+anchors, looks the cert up in the configured `Certificate` module, and
+assigns the verified peer to `conn.assigns.ash_pki_actor` for use by Ash
+policies. Wire your own resource via the `:certificate` option:
+
+```elixir
+plug AshPki.Plug.MTLS, certificate: MyApp.Certificate
+```
 
 ## Key strategies
 
@@ -89,9 +166,9 @@ file and rely on database persistence.
 
 ## Data layer
 
-Resources default to `Ash.DataLayer.Ets` so the demo and tests run without a
-database. Real deployments swap to `AshPostgres.DataLayer`; the resource
-definitions stay the same.
+The default resources use `Ash.DataLayer.Ets` so the demo and tests run
+without a database. Operator-owned resources pick whichever data layer
+they want — the extensions are data-layer agnostic.
 
 ## Out of scope (v0.1)
 
@@ -107,6 +184,7 @@ definitions stay the same.
 mix test
 ```
 
-14 tests covering CA bootstrap, intermediate signing, leaf issuance, chain
-validation, revocation + CRL publication, and the mTLS plug across
-known/unknown/revoked cert paths.
+Tests cover CA bootstrap, intermediate signing, leaf issuance, chain
+validation, revocation + CRL publication, the mTLS plug across
+known/unknown/revoked cert paths, and the resource-extension pattern
+applied to consumer-owned modules.

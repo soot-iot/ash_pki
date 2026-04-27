@@ -32,7 +32,10 @@ defmodule AshPki.TrustStoreTest do
 
   test "pinned_roots/0 reads PEM certificates from configured files" do
     pinned = Factories.fresh_root!("pinned-only")
-    path = Path.join(System.tmp_dir!(), "trust-store-test-#{:erlang.unique_integer([:positive])}.pem")
+
+    path =
+      Path.join(System.tmp_dir!(), "trust-store-test-#{:erlang.unique_integer([:positive])}.pem")
+
     File.write!(path, pinned.certificate_pem)
 
     Application.put_env(:ash_pki, :pinned_roots, [path])
@@ -62,5 +65,4 @@ defmodule AshPki.TrustStoreTest do
   after
     Application.delete_env(:ash_pki, :pinned_roots)
   end
-
 end

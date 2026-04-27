@@ -2,7 +2,7 @@ defmodule Mix.Tasks.AshPki.Install.Docs do
   @moduledoc false
 
   def short_doc do
-    "Installs the AshPki PKI domain stub into a Phoenix/Ash project"
+    "Installs ash_pki: registers AshPki.Domain, seeds priv/pki and software key strategy"
   end
 
   def example do
@@ -13,15 +13,19 @@ defmodule Mix.Tasks.AshPki.Install.Docs do
     """
     #{short_doc()}
 
-    Generates a `Pki` Ash domain plus `CertificateAuthority`, `Certificate`,
-    and `RevocationList` resource stubs in the operator's project,
-    creates a `priv/pki/` placeholder for trust material, configures the
-    software key strategy in dev/test, and imports the `:ash_pki`
-    formatter rules.
+    `AshPki.Domain` ships its `CertificateAuthority`, `Certificate`,
+    `RevocationList`, and `EnrollmentToken` resources as concrete
+    library modules. The installer registers that domain in the
+    operator's `:ash_domains` config rather than generating empty
+    copies.
+
+    The installer also creates `priv/pki/.gitkeep` (the on-disk trust
+    material output dir), configures the `:software` key strategy in
+    `config/config.exs`, and imports the `:ash_pki` formatter rules.
 
     Composed by `mix soot.install`; can also be run standalone.
 
-    See the `UI-SPEC.md` in the `soot` package for the full design.
+    See `GENERATOR-SPEC.md` in the `soot` package for the full design.
 
     ## Example
 
@@ -32,8 +36,8 @@ defmodule Mix.Tasks.AshPki.Install.Docs do
     ## Options
 
       * `--example` — same shape as the rest of the Soot installers;
-        currently a no-op for `ash_pki` since the resource stubs already
-        compile against the framework's defaults.
+        currently a no-op for `ash_pki` since the framework's resources
+        compile against the shipped defaults.
       * `--yes` — answer yes to dependency-fetching prompts.
     """
   end
@@ -45,12 +49,6 @@ if Code.ensure_loaded?(Igniter) do
     @moduledoc __MODULE__.Docs.long_doc()
 
     use Igniter.Mix.Task
-
-    @resources [
-      "CertificateAuthority",
-      "Certificate",
-      "RevocationList"
-    ]
 
     @impl Igniter.Mix.Task
     def info(_argv, _composing_task) do
@@ -69,11 +67,25 @@ if Code.ensure_loaded?(Igniter) do
     def igniter(igniter) do
       igniter
       |> Igniter.Project.Formatter.import_dep(:ash_pki)
+      |> register_domain()
       |> configure_key_strategy()
-      |> create_pki_domain()
-      |> create_resources()
       |> create_pki_dir_placeholder()
       |> note_next_steps()
+    end
+
+    defp register_domain(igniter) do
+      app = Igniter.Project.Application.app_name(igniter)
+
+      Igniter.Project.Config.configure(
+        igniter,
+        "config.exs",
+        app,
+        [:ash_domains],
+        [AshPki.Domain],
+        updater: fn list ->
+          Igniter.Code.List.prepend_new_to_list(list, AshPki.Domain)
+        end
+      )
     end
 
     defp configure_key_strategy(igniter) do
@@ -84,64 +96,6 @@ if Code.ensure_loaded?(Igniter) do
         [:key_strategy],
         :software
       )
-    end
-
-    defp pki_domain_module(igniter) do
-      Igniter.Project.Module.module_name(igniter, "Pki")
-    end
-
-    defp resource_module(igniter, resource_name) do
-      Igniter.Project.Module.module_name(igniter, "Pki.#{resource_name}")
-    end
-
-    defp create_pki_domain(igniter) do
-      module = pki_domain_module(igniter)
-
-      Igniter.Project.Module.create_module(
-        igniter,
-        module,
-        """
-        @moduledoc \"\"\"
-        PKI domain — owns the certificate authorities, certificates, and
-        revocation lists used for device mTLS.
-
-        Generated stub. Operators can extend with their own resources or
-        replace the framework-shipped ones; the installer does not
-        re-touch this file once generated.
-        \"\"\"
-
-        use Ash.Domain
-
-        resources do
-        end
-        """
-      )
-    end
-
-    defp create_resources(igniter) do
-      domain = pki_domain_module(igniter)
-
-      Enum.reduce(@resources, igniter, fn resource_name, igniter ->
-        module = resource_module(igniter, resource_name)
-
-        Igniter.Project.Module.create_module(
-          igniter,
-          module,
-          """
-          @moduledoc \"\"\"
-          #{resource_name} resource stub for the PKI domain.
-
-          Generated stub. Extend with attributes, actions, and policies.
-          The installer does not re-touch this file once generated.
-          \"\"\"
-
-          use Ash.Resource, domain: #{inspect(domain)}
-
-          actions do
-          end
-          """
-        )
-      end)
     end
 
     defp create_pki_dir_placeholder(igniter) do
@@ -157,12 +111,13 @@ if Code.ensure_loaded?(Igniter) do
       Igniter.add_notice(igniter, """
       ash_pki installed.
 
-      Generated:
+      `AshPki.Domain` is registered in `:ash_domains`. Its
+      `CertificateAuthority`, `Certificate`, `RevocationList`, and
+      `EnrollmentToken` resources ship with the library — no operator
+      stubs are generated.
 
-        lib/<app>/pki.ex                             PKI domain stub
-        lib/<app>/pki/certificate_authority.ex       CA resource stub
-        lib/<app>/pki/certificate.ex                 Certificate resource stub
-        lib/<app>/pki/revocation_list.ex             Revocation list stub
+      Created:
+
         priv/pki/.gitkeep                            Trust material output dir
 
       Dev/test config sets `:ash_pki, :key_strategy` to `:software`.
@@ -171,7 +126,7 @@ if Code.ensure_loaded?(Igniter) do
       Next:
 
         mix ash_pki.init       # bootstrap a CA hierarchy under priv/pki
-        mix ash.codegen        # if you added persistence to the resources
+        mix ash.codegen        # if you've extended persistence locally
       """)
     end
   end

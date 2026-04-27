@@ -43,8 +43,11 @@ defmodule Mix.Tasks.AshPki.Init do
 
     Mix.shell().info("==> Generating root CA: #{root_cn}")
 
+    ca_module = AshPki.CertificateAuthority
+    cert_module = AshPki.Certificate
+
     {:ok, root} =
-      AshPki.CertificateAuthority.create_root(
+      ca_module.create_root(
         "root",
         "/CN=#{root_cn}",
         %{validity_days: validity_days}
@@ -53,7 +56,7 @@ defmodule Mix.Tasks.AshPki.Init do
     Mix.shell().info("==> Generating intermediate CA: #{intermediate_cn}")
 
     {:ok, intermediate} =
-      AshPki.CertificateAuthority.create_intermediate(
+      ca_module.create_intermediate(
         "intermediate",
         root.id,
         "/CN=#{intermediate_cn}",
@@ -66,7 +69,7 @@ defmodule Mix.Tasks.AshPki.Init do
     server_csr_pem = X509.CSR.to_pem(server_csr)
 
     {:ok, server_cert} =
-      AshPki.Certificate.issue(intermediate.id, server_csr_pem, %{
+      cert_module.issue(intermediate.id, server_csr_pem, %{
         template: :server,
         validity_days: 365,
         subject_alt_names: [server_cn]

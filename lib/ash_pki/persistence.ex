@@ -13,16 +13,25 @@ defmodule AshPki.Persistence do
   """
 
   @manifest "ash_pki.json"
+  @default_ca AshPki.CertificateAuthority
 
   require Ash.Query
 
-  @doc "Dump every active CA to `<dir>/ash_pki.json`."
-  @spec dump!(Path.t()) :: :ok
-  def dump!(dir) do
+  @doc """
+  Dump every active CA to `<dir>/ash_pki.json`.
+
+  Options:
+
+    * `:certificate_authority` — CA resource module to read from.
+      Defaults to `AshPki.CertificateAuthority`.
+  """
+  @spec dump!(Path.t(), keyword()) :: :ok
+  def dump!(dir, opts \\ []) do
+    ca_module = Keyword.get(opts, :certificate_authority, @default_ca)
     File.mkdir_p!(dir)
 
     {:ok, cas} =
-      AshPki.CertificateAuthority
+      ca_module
       |> Ash.Query.filter(status == :active)
       |> Ash.read(authorize?: false)
 
@@ -54,9 +63,15 @@ defmodule AshPki.Persistence do
   @doc """
   Load the manifest from `<dir>` and re-insert rows into the ETS data
   layer. Idempotent: rows that already match an id are upserted.
+
+  Options:
+
+    * `:certificate_authority` — CA resource module to seed into.
+      Defaults to `AshPki.CertificateAuthority`.
   """
-  @spec load!(Path.t()) :: :ok | {:error, :not_found}
-  def load!(dir) do
+  @spec load!(Path.t(), keyword()) :: :ok | {:error, :not_found}
+  def load!(dir, opts \\ []) do
+    ca_module = Keyword.get(opts, :certificate_authority, @default_ca)
     path = Path.join(dir, @manifest)
 
     case File.read(path) do
@@ -64,7 +79,7 @@ defmodule AshPki.Persistence do
         body
         |> Jason.decode!()
         |> Map.fetch!("cas")
-        |> Enum.each(&insert_ca/1)
+        |> Enum.each(&insert_ca(ca_module, &1))
 
         :ok
 
@@ -73,9 +88,9 @@ defmodule AshPki.Persistence do
     end
   end
 
-  defp insert_ca(payload) do
+  defp insert_ca(ca_module, payload) do
     {:ok, _} =
-      Ash.Seed.seed!(AshPki.CertificateAuthority, %{
+      Ash.Seed.seed!(ca_module, %{
         id: payload["id"],
         name: payload["name"],
         role: parse_role(payload["role"]),
@@ -90,11 +105,11 @@ defmodule AshPki.Persistence do
         not_after: parse_dt(payload["not_after"]),
         status: :active
       })
-      |> wrap()
+      |> wrap(ca_module)
   end
 
-  defp wrap(%AshPki.CertificateAuthority{} = ca), do: {:ok, ca}
-  defp wrap(other), do: other
+  defp wrap(%mod{} = ca, mod), do: {:ok, ca}
+  defp wrap(other, _mod), do: other
 
   defp parse_dt(nil), do: nil
 
