@@ -66,6 +66,23 @@ defmodule AshPki.KeyStrategy do
             ) :: {:ok, X509.CRL.t()} | {:error, term()}
 
   @doc """
+  Sign an arbitrary body with the descriptor's key, returning the raw
+  signature bytes.
+
+  Useful for signing payloads that aren't certificates or CRLs — the
+  contract bundle in `soot_contracts` is the driving case. Strategies
+  that hold no signing material (`:imported`) return
+  `{:error, :no_signing_capability}`; strategies that aren't yet wired
+  (`:kms`) return `{:error, :not_implemented}`.
+
+  Options:
+    * `:digest_alg` — atom passed to `:public_key.sign/3`. Default
+      `:sha256`.
+  """
+  @callback sign(descriptor(), body :: binary(), opts()) ::
+              {:ok, binary()} | {:error, term()}
+
+  @doc """
   Import an externally-generated public certificate (e.g. ATECC, OPTIGA).
 
   The strategy stores enough to identify and verify the key but never holds

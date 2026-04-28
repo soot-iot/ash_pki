@@ -37,4 +37,7 @@ defmodule AshPki.KeyStrategy.KMS do
 
   @impl true
   def sign_crl(_descriptor, _issuer, _entries, _opts), do: {:error, :not_implemented}
+
+  @impl true
+  def sign(_descriptor, _body, _opts), do: {:error, :not_implemented}
 end

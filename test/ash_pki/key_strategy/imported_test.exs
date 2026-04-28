@@ -19,6 +19,7 @@ defmodule AshPki.KeyStrategy.ImportedTest do
     assert {:error, :no_signing_capability} = Imported.sign_csr(%{}, nil, nil, [])
     assert {:error, :no_signing_capability} = Imported.self_sign(%{}, "/CN=x", [])
     assert {:error, :no_signing_capability} = Imported.sign_crl(%{}, nil, [], [])
+    assert {:error, :no_signing_capability} = Imported.sign(%{}, "body", [])
   end
 
   test "import_public extracts the public key and stores vendor metadata" do
