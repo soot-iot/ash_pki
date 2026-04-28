@@ -147,5 +147,28 @@ defmodule AshPki.KeyStrategy.PKCS11Test do
           :ok
       end
     end
+
+    test "sign produces a signature that verifies against the cached public key", context do
+      case context do
+        %{descriptor: descriptor} ->
+          body = "contract bundle manifest body"
+
+          assert {:ok, signature} = PKCS11.sign(descriptor, body)
+          assert is_binary(signature) and byte_size(signature) > 0
+
+          {:ok, public} = PKCS11.public_key(descriptor)
+          assert :public_key.verify(body, :sha256, signature, public)
+
+        _ ->
+          # SoftHSM2 not configured — silently pass.
+          :ok
+      end
+    end
+  end
+
+  describe "sign/3 (without HSM)" do
+    test "an empty descriptor surfaces a clean error rather than crashing" do
+      assert {:error, {:missing, _}} = PKCS11.sign(%{}, "body")
+    end
   end
 end

@@ -47,6 +47,9 @@ defmodule AshPki.KeyStrategy.Imported do
   def sign_crl(_descriptor, _issuer, _entries, _opts), do: {:error, :no_signing_capability}
 
   @impl true
+  def sign(_descriptor, _body, _opts), do: {:error, :no_signing_capability}
+
+  @impl true
   def import_public(cert_pem, opts) when is_binary(cert_pem) do
     case X509.Certificate.from_pem(cert_pem) do
       {:ok, cert} ->

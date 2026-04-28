@@ -122,6 +122,17 @@ defmodule AshPki.KeyStrategy.PKCS11 do
     error -> {:error, error}
   end
 
+  @impl true
+  def sign(descriptor, body, opts \\ []) when is_binary(body) do
+    digest_alg = Keyword.get(opts, :digest_alg, :sha256)
+
+    with {:ok, engine_key} <- engine_key(descriptor) do
+      {:ok, :public_key.sign(body, digest_alg, engine_key)}
+    end
+  rescue
+    error -> {:error, error}
+  end
+
   # ─── descriptor + engine helpers ───────────────────────────────────────
 
   @doc """

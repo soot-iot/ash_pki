@@ -121,6 +121,15 @@ defmodule AshPki.KeyStrategy.Software do
   end
 
   @impl true
+  def sign(descriptor, body, opts \\ []) when is_binary(body) do
+    digest_alg = Keyword.get(opts, :digest_alg, :sha256)
+
+    with {:ok, private} <- private_key(descriptor) do
+      {:ok, :public_key.sign(body, digest_alg, private)}
+    end
+  end
+
+  @impl true
   def import_public(_cert_pem, _opts) do
     {:error, :use_imported_strategy}
   end
