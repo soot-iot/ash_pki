@@ -1,12 +1,17 @@
 defmodule AshPki.Test.Factories do
   @moduledoc false
 
+  # Factories use `authorize?: false` for setup. Allowed in
+  # `test/support/` per POLICY-SPEC §5.1; mirrors upstream Ash test
+  # convention (`Example.User |> Ash.create!(authorize?: false)`).
+
   def fresh_root!(name \\ "test-root") do
     {:ok, ca} =
       AshPki.CertificateAuthority.create_root(
         name,
         "/CN=#{name}/O=AshPki Test",
-        %{validity_days: 365}
+        %{validity_days: 365},
+        authorize?: false
       )
 
     ca
@@ -18,7 +23,8 @@ defmodule AshPki.Test.Factories do
         name,
         parent_id,
         "/CN=#{name}/O=AshPki Test",
-        %{validity_days: 180}
+        %{validity_days: 180},
+        authorize?: false
       )
 
     ca
@@ -34,10 +40,15 @@ defmodule AshPki.Test.Factories do
     {private, _csr, csr_pem} = fresh_keypair_and_csr(subject)
 
     {:ok, cert} =
-      AshPki.Certificate.issue(issuer_id, csr_pem, %{
-        template: :client,
-        validity_days: 30
-      })
+      AshPki.Certificate.issue(
+        issuer_id,
+        csr_pem,
+        %{
+          template: :client,
+          validity_days: 30
+        },
+        authorize?: false
+      )
 
     {private, cert}
   end
