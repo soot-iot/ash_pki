@@ -2,7 +2,7 @@ defmodule Mix.Tasks.AshPki.Install.Docs do
   @moduledoc false
 
   def short_doc do
-    "Installs ash_pki: registers AshPki.Domain, seeds priv/pki and software key strategy"
+    "Installs ash_pki: registers AshPki.Domain, generates AshPostgres-backed resources, seeds priv/pki and software key strategy"
   end
 
   def example do
@@ -16,8 +16,29 @@ defmodule Mix.Tasks.AshPki.Install.Docs do
     `AshPki.Domain` ships its `CertificateAuthority`, `Certificate`,
     `RevocationList`, and `EnrollmentToken` resources as concrete
     library modules. The installer registers that domain in the
-    operator's `:ash_domains` config rather than generating empty
-    copies.
+    operator's `:ash_domains` config rather than generating empty stub
+    copies of the library defaults.
+
+    The library defaults run on `Ash.DataLayer.Ets` so the ash_pki
+    test suite can run with zero infra, but Postgres is mandatory in
+    the soot stack. The installer therefore composes
+    `ash_postgres.install` (wiring the consumer's Repo + the
+    `:ash_postgres` dep) and generates four AshPostgres-backed
+    consumer resource modules under `lib/<app>/`:
+
+      * `<App>.CertificateAuthority` — table `certificate_authorities`
+      * `<App>.Certificate`          — table `certificates`
+      * `<App>.RevocationList`       — table `revocation_lists`
+      * `<App>.EnrollmentToken`      — table `enrollment_tokens`
+
+    Each generated module applies the matching
+    `AshPki.Resource.<Name>` extension and (for the three resources
+    with sibling references) declares the relationship targets via the
+    `pki do … end` block. The four modules are then registered in
+    `config/config.exs` under `:ash_pki, <key>:` so the rest of
+    ash_pki picks them up at boot. Operators own the generated files
+    post-install — edit `postgres do … end` blocks, add custom
+    actions, etc. as needed.
 
     The installer also creates `priv/pki/.gitkeep` (the on-disk trust
     material output dir), configures the `:software` key strategy in
@@ -50,13 +71,20 @@ if Code.ensure_loaded?(Igniter) do
 
     use Igniter.Mix.Task
 
+    @resource_keys [
+      :certificate_authority,
+      :certificate,
+      :revocation_list,
+      :enrollment_token
+    ]
+
     @impl Igniter.Mix.Task
     def info(_argv, _composing_task) do
       %Igniter.Mix.Task.Info{
         group: :ash_pki,
         example: __MODULE__.Docs.example(),
         only: nil,
-        composes: [],
+        composes: ["ash_postgres.install"],
         schema: [example: :boolean, yes: :boolean],
         defaults: [example: false, yes: false],
         aliases: [y: :yes, e: :example]
@@ -68,6 +96,9 @@ if Code.ensure_loaded?(Igniter) do
       igniter
       |> Igniter.Project.Formatter.import_dep(:ash_pki)
       |> register_domain()
+      |> compose_ash_postgres()
+      |> generate_consumer_resources()
+      |> register_consumer_resources()
       |> configure_key_strategy()
       |> create_pki_dir_placeholder()
       |> note_next_steps()
@@ -87,6 +118,186 @@ if Code.ensure_loaded?(Igniter) do
         end
       )
     end
+
+    # `ash_postgres.install` handles the `:ash_postgres` dep, the Repo
+    # module, the `:ecto_repos` config, and dev/test/runtime DB URLs.
+    # Threading `--yes` through keeps the install non-interactive when
+    # the parent installer is running with `-y`. The third-arg fallback
+    # is a no-op so the installer's own test suite (which runs without
+    # ash_postgres in deps) can still exercise the rest of the
+    # pipeline; in real consumer projects `ash_postgres.install` is
+    # available because the parent `mix igniter.install` resolves it.
+    defp compose_ash_postgres(igniter) do
+      argv = if igniter.args.options[:yes], do: ["--yes"], else: []
+      Igniter.compose_task(igniter, "ash_postgres.install", argv, & &1)
+    end
+
+    defp generate_consumer_resources(igniter) do
+      Enum.reduce(@resource_keys, igniter, fn key, acc ->
+        generate_resource_module(acc, key)
+      end)
+    end
+
+    defp generate_resource_module(igniter, key) do
+      module = consumer_module_name(igniter, key)
+      {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, module)
+
+      if exists? do
+        igniter
+      else
+        repo = Igniter.Project.Module.module_name(igniter, "Repo")
+        body = consumer_module_body(igniter, key, repo)
+        Igniter.Project.Module.create_module(igniter, module, body)
+      end
+    end
+
+    defp register_consumer_resources(igniter) do
+      Enum.reduce(@resource_keys, igniter, fn key, acc ->
+        module = consumer_module_name(acc, key)
+
+        Igniter.Project.Config.configure(
+          acc,
+          "config.exs",
+          :ash_pki,
+          [key],
+          module
+        )
+      end)
+    end
+
+    defp consumer_module_name(igniter, key) do
+      Igniter.Project.Module.module_name(igniter, camelize(key))
+    end
+
+    defp camelize(key), do: key |> Atom.to_string() |> Macro.camelize()
+
+    defp consumer_module_body(igniter, :certificate_authority, repo) do
+      module = consumer_module_name(igniter, :certificate_authority)
+      certificate = consumer_module_name(igniter, :certificate)
+      revocation_list = consumer_module_name(igniter, :revocation_list)
+
+      """
+      @moduledoc \"\"\"
+      AshPostgres-backed `CertificateAuthority` resource generated by
+      `mix ash_pki.install`. Operators own this file — edit the
+      `postgres do … end` block, add domain-specific actions, etc. as
+      needed. The schema (attributes, identities, lifecycle actions)
+      comes from the `AshPki.Resource.CertificateAuthority` extension;
+      sibling relationships are wired via the `pki do … end` block.
+      Registered via `config :ash_pki, certificate_authority: #{inspect(module)}`.
+      \"\"\"
+
+      use Ash.Resource,
+        otp_app: :#{otp_app(igniter)},
+        domain: AshPki.Domain,
+        data_layer: AshPostgres.DataLayer,
+        extensions: [AshPki.Resource.CertificateAuthority]
+
+      postgres do
+        table "certificate_authorities"
+        repo #{inspect(repo)}
+      end
+
+      pki do
+        certificate #{inspect(certificate)}
+        revocation_list #{inspect(revocation_list)}
+      end
+      """
+    end
+
+    defp consumer_module_body(igniter, :certificate, repo) do
+      module = consumer_module_name(igniter, :certificate)
+      certificate_authority = consumer_module_name(igniter, :certificate_authority)
+
+      """
+      @moduledoc \"\"\"
+      AshPostgres-backed `Certificate` resource generated by
+      `mix ash_pki.install`. Operators own this file — edit the
+      `postgres do … end` block, add domain-specific actions, etc. as
+      needed. The schema (attributes, identities, lifecycle actions)
+      comes from the `AshPki.Resource.Certificate` extension; the
+      `:issuer` relationship is wired via the `pki do … end` block.
+      Registered via `config :ash_pki, certificate: #{inspect(module)}`.
+      \"\"\"
+
+      use Ash.Resource,
+        otp_app: :#{otp_app(igniter)},
+        domain: AshPki.Domain,
+        data_layer: AshPostgres.DataLayer,
+        extensions: [AshPki.Resource.Certificate]
+
+      postgres do
+        table "certificates"
+        repo #{inspect(repo)}
+      end
+
+      pki do
+        certificate_authority #{inspect(certificate_authority)}
+      end
+      """
+    end
+
+    defp consumer_module_body(igniter, :revocation_list, repo) do
+      module = consumer_module_name(igniter, :revocation_list)
+      certificate_authority = consumer_module_name(igniter, :certificate_authority)
+      certificate = consumer_module_name(igniter, :certificate)
+
+      """
+      @moduledoc \"\"\"
+      AshPostgres-backed `RevocationList` resource generated by
+      `mix ash_pki.install`. Operators own this file — edit the
+      `postgres do … end` block, add domain-specific actions, etc. as
+      needed. The schema (attributes, identities, lifecycle actions)
+      comes from the `AshPki.Resource.RevocationList` extension;
+      sibling relationships are wired via the `pki do … end` block.
+      Registered via `config :ash_pki, revocation_list: #{inspect(module)}`.
+      \"\"\"
+
+      use Ash.Resource,
+        otp_app: :#{otp_app(igniter)},
+        domain: AshPki.Domain,
+        data_layer: AshPostgres.DataLayer,
+        extensions: [AshPki.Resource.RevocationList]
+
+      postgres do
+        table "revocation_lists"
+        repo #{inspect(repo)}
+      end
+
+      pki do
+        certificate_authority #{inspect(certificate_authority)}
+        certificate #{inspect(certificate)}
+      end
+      """
+    end
+
+    defp consumer_module_body(igniter, :enrollment_token, repo) do
+      module = consumer_module_name(igniter, :enrollment_token)
+
+      """
+      @moduledoc \"\"\"
+      AshPostgres-backed `EnrollmentToken` resource generated by
+      `mix ash_pki.install`. Operators own this file — edit the
+      `postgres do … end` block, add domain-specific actions, etc. as
+      needed. The schema comes from the
+      `AshPki.Resource.EnrollmentToken` extension. Registered via
+      `config :ash_pki, enrollment_token: #{inspect(module)}`.
+      \"\"\"
+
+      use Ash.Resource,
+        otp_app: :#{otp_app(igniter)},
+        domain: AshPki.Domain,
+        data_layer: AshPostgres.DataLayer,
+        extensions: [AshPki.Resource.EnrollmentToken]
+
+      postgres do
+        table "enrollment_tokens"
+        repo #{inspect(repo)}
+      end
+      """
+    end
+
+    defp otp_app(igniter), do: Igniter.Project.Application.app_name(igniter)
 
     defp configure_key_strategy(igniter) do
       Igniter.Project.Config.configure(
@@ -111,10 +322,16 @@ if Code.ensure_loaded?(Igniter) do
       Igniter.add_notice(igniter, """
       ash_pki installed.
 
-      `AshPki.Domain` is registered in `:ash_domains`. Its
-      `CertificateAuthority`, `Certificate`, `RevocationList`, and
-      `EnrollmentToken` resources ship with the library — no operator
-      stubs are generated.
+      `AshPki.Domain` is registered in `:ash_domains`. The four
+      AshPostgres-backed consumer resources have been generated under
+      `lib/<app>/` (CertificateAuthority, Certificate, RevocationList,
+      EnrollmentToken) and registered in `config/config.exs` under
+      their respective `:ash_pki, <key>:` keys. The Repo module and
+      `:ash_postgres` dep were wired by the composed
+      `ash_postgres.install`.
+
+      Operators own the generated resource files — edit
+      `postgres do … end` blocks, add custom actions, etc. as needed.
 
       Created:
 
@@ -123,10 +340,11 @@ if Code.ensure_loaded?(Igniter) do
       Dev/test config sets `:ash_pki, :key_strategy` to `:software`.
       Switch to `:pkcs11` in `config/runtime.exs` for production HSMs.
 
-      Next:
+      Next steps:
 
+        mix ash.codegen --name install_ash_pki
+        mix ash.setup
         mix ash_pki.init       # bootstrap a CA hierarchy under priv/pki
-        mix ash.codegen        # if you've extended persistence locally
       """)
     end
   end

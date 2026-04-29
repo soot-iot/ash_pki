@@ -1,6 +1,22 @@
 # Changelog
 
-All notable changes to `ash_pki` are documented here.
+All notable changes to `ash_pki` are documented here. The format
+follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+the project adheres to semantic versioning.
+
+## [Unreleased]
+
+### Added
+- `mix ash_pki.install` now generates AshPostgres-backed consumer
+  resource modules for all four ash_pki resources
+  (`CertificateAuthority`, `Certificate`, `RevocationList`,
+  `EnrollmentToken`) under `lib/<app>/` and registers them in
+  `config/config.exs` under `:ash_pki, <key>:`. The installer composes
+  `ash_postgres.install` to wire the consumer's Repo and the
+  `:ash_postgres` dep. The library's own concrete defaults stay on
+  `Ash.DataLayer.Ets` for the ash_pki test suite; consumer projects
+  always boot against AshPostgres, which is mandatory in the soot
+  stack.
 
 ## v0.1.0 (unreleased)
 
