@@ -275,20 +275,26 @@ defmodule AshPki.ResourceExtensionTest do
         AshPki.CertificateAuthority.create_root!(
           "shared-default-root",
           "/CN=shared-default-root",
-          %{validity_days: 90}
+          %{validity_days: 90},
+          authorize?: false
         )
 
       {:ok, custom_root} =
         Custom.CertificateAuthority.create_root(
           "shared-custom-root",
           "/CN=shared-custom-root",
-          %{validity_days: 90}
+          %{validity_days: 90},
+          authorize?: false
         )
 
       # Each hierarchy stores its CAs in its own ETS table; neither sees
       # the other.
-      assert {:ok, _} = AshPki.CertificateAuthority.get_by_name("shared-default-root")
-      assert {:error, _} = AshPki.CertificateAuthority.get_by_name("shared-custom-root")
+      assert {:ok, _} =
+               AshPki.CertificateAuthority.get_by_name("shared-default-root", authorize?: false)
+
+      assert {:error, _} =
+               AshPki.CertificateAuthority.get_by_name("shared-custom-root", authorize?: false)
+
       assert {:ok, _} = Custom.CertificateAuthority.get_by_name("shared-custom-root")
       assert {:error, _} = Custom.CertificateAuthority.get_by_name("shared-default-root")
 

@@ -39,7 +39,7 @@ defmodule Mix.Tasks.AshPki.ImportCerts do
     {opts, _} = OptionParser.parse!(args, strict: @switches)
 
     issuer_name = Keyword.fetch!(opts, :issuer)
-    {:ok, issuer} = AshPki.CertificateAuthority.get_by_name(issuer_name)
+    {:ok, issuer} = AshPki.CertificateAuthority.get_by_name(issuer_name, actor: issuer_actor())
 
     sources =
       [
@@ -78,7 +78,9 @@ defmodule Mix.Tasks.AshPki.ImportCerts do
     pem = File.read!(path)
     metadata = %{"vendor" => Keyword.get(opts, :vendor, "custom")}
 
-    case AshPki.Certificate.import_certificate(issuer.id, pem, %{metadata: metadata}) do
+    case AshPki.Certificate.import_certificate(issuer.id, pem, %{metadata: metadata},
+           actor: issuer_actor()
+         ) do
       {:ok, cert} ->
         Mix.shell().info("==> imported cert (serial #{cert.serial}, fp #{cert.fingerprint})")
 
@@ -86,6 +88,8 @@ defmodule Mix.Tasks.AshPki.ImportCerts do
         Mix.raise("import failed: #{inspect(reason)}")
     end
   end
+
+  defp issuer_actor, do: AshPki.Actors.system(:issuer)
 
   defp report(inserted, errors) do
     Mix.shell().info("==> imported #{inserted} cert(s)")
