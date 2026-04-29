@@ -33,7 +33,7 @@ defmodule AshPki.Persistence do
     {:ok, cas} =
       ca_module
       |> Ash.Query.filter(status == :active)
-      |> Ash.read(authorize?: false)
+      |> Ash.read(actor: AshPki.Actors.system(:trust_loader))
 
     payload = %{
       "version" => 1,

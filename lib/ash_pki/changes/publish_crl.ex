@@ -12,9 +12,11 @@ defmodule AshPki.Changes.PublishCRL do
       ca_module = AshPki.Resource.RevocationList.Info.pki_certificate_authority!(crl_module)
       cert_module = AshPki.Resource.RevocationList.Info.pki_certificate!(crl_module)
 
-      with {:ok, ca} <- Ash.get(ca_module, ca_id, authorize?: false),
+      actor = AshPki.Actors.system(:crl_publisher)
+
+      with {:ok, ca} <- Ash.get(ca_module, ca_id, actor: actor),
            {:ok, issuer_cert} <- X509.Certificate.from_pem(ca.certificate_pem),
-           {:ok, revoked} <- cert_module.revoked_for_issuer(ca_id, authorize?: false),
+           {:ok, revoked} <- cert_module.revoked_for_issuer(ca_id, actor: actor),
            strategy <- AshPki.key_strategy(ca.key_strategy),
            entries <- Enum.map(revoked, &build_entry/1),
            {:ok, crl} <-
@@ -71,7 +73,7 @@ defmodule AshPki.Changes.PublishCRL do
   defp to_x509_reason(:aa_compromise), do: :aACompromise
 
   defp next_sequence(crl_module, ca_id) do
-    {:ok, all} = crl_module.for_ca(ca_id, authorize?: false)
+    {:ok, all} = crl_module.for_ca(ca_id, actor: AshPki.Actors.system(:crl_publisher))
 
     case Enum.map(all, & &1.sequence) do
       [] -> 1
@@ -85,11 +87,12 @@ defmodule AshPki.Changes.PublishCRL do
   end
 
   defp supersede_previous(crl_module, ca_id, current_id) do
-    {:ok, all} = crl_module.for_ca(ca_id, authorize?: false)
+    actor = AshPki.Actors.system(:crl_publisher)
+    {:ok, all} = crl_module.for_ca(ca_id, actor: actor)
 
     Enum.each(all, fn rl ->
       if rl.id != current_id and rl.status == :current do
-        crl_module.supersede!(rl, authorize?: false)
+        crl_module.supersede!(rl, actor: actor)
       end
     end)
   end

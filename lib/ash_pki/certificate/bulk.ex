@@ -60,7 +60,8 @@ defmodule AshPki.Certificate.Bulk do
     cert_module = Keyword.get(opts, :certificate, @default_certificate)
     ca_module = AshPki.Resource.Certificate.Info.pki_certificate_authority!(cert_module)
 
-    with {:ok, _issuer} <- Ash.get(ca_module, issuer_id, authorize?: false) do
+    with {:ok, _issuer} <-
+           Ash.get(ca_module, issuer_id, actor: AshPki.Actors.system(:issuer)) do
       [header | rows] = __MODULE__.CSV.parse_string(csv_blob, skip_headers: false)
       header = Enum.map(header, &String.trim/1)
 
@@ -106,7 +107,8 @@ defmodule AshPki.Certificate.Bulk do
     cert_module = Keyword.get(opts, :certificate, @default_certificate)
     ca_module = AshPki.Resource.Certificate.Info.pki_certificate_authority!(cert_module)
 
-    with {:ok, _issuer} <- Ash.get(ca_module, issuer_id, authorize?: false) do
+    with {:ok, _issuer} <-
+           Ash.get(ca_module, issuer_id, actor: AshPki.Actors.system(:issuer)) do
       cert_pems =
         bundle_pem
         |> String.split("-----BEGIN CERTIFICATE-----", trim: true)
@@ -135,7 +137,7 @@ defmodule AshPki.Certificate.Bulk do
            issuer_id,
            pem,
            %{metadata: metadata},
-           authorize?: false
+           actor: AshPki.Actors.system(:issuer)
          ) do
       {:ok, _cert} -> %{acc | inserted: acc.inserted + 1}
       {:error, reason} -> %{acc | errors: [{idx, summarise_error(reason)} | acc.errors]}
@@ -154,7 +156,7 @@ defmodule AshPki.Certificate.Bulk do
              issuer_id,
              pem,
              %{metadata: metadata},
-             authorize?: false
+             actor: AshPki.Actors.system(:issuer)
            ) do
       :ok
     else
