@@ -16,9 +16,21 @@ defmodule AshPki.RevocationList do
     otp_app: :ash_pki,
     domain: AshPki.Domain,
     data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
     extensions: [AshPki.Resource.RevocationList]
 
   ets do
     private? false
+  end
+
+  # Default policies (POLICY-SPEC §4.1). `:crl_publisher` covers
+  # publish + supersede. `:trust_loader` reads CRLs when assembling
+  # the trust store.
+  policies do
+    policy always() do
+      access_type :strict
+      authorize_if actor_attribute_equals(:part, :crl_publisher)
+      authorize_if actor_attribute_equals(:part, :trust_loader)
+    end
   end
 end

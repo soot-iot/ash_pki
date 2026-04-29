@@ -29,7 +29,9 @@ defmodule AshPki.CertificateTest do
   test "revoke transitions status and stamps revoked_at", ctx do
     {_priv, leaf} = Factories.issue_cert!(ctx.intermediate.id, "/CN=device-002")
 
-    {:ok, revoked} = AshPki.Certificate.revoke(leaf, %{reason: :key_compromise})
+    {:ok, revoked} =
+      AshPki.Certificate.revoke(leaf, %{reason: :key_compromise}, authorize?: false)
+
     assert revoked.status == :revoked
     assert revoked.revocation_reason == :key_compromise
     assert %DateTime{} = revoked.revoked_at
@@ -38,7 +40,9 @@ defmodule AshPki.CertificateTest do
   test "get_by_fingerprint finds known cert", ctx do
     {_priv, leaf} = Factories.issue_cert!(ctx.intermediate.id, "/CN=device-003")
 
-    assert {:ok, found} = AshPki.Certificate.get_by_fingerprint(leaf.fingerprint)
+    assert {:ok, found} =
+             AshPki.Certificate.get_by_fingerprint(leaf.fingerprint, authorize?: false)
+
     assert found.id == leaf.id
     assert found.fingerprint == leaf.fingerprint
   end
@@ -46,8 +50,8 @@ defmodule AshPki.CertificateTest do
   test "duplicate fingerprint when issuing same CSR twice yields two distinct rows", ctx do
     {_priv, _csr, csr_pem} = Factories.fresh_keypair_and_csr("/CN=device-dup")
 
-    {:ok, a} = AshPki.Certificate.issue(ctx.intermediate.id, csr_pem)
-    {:ok, b} = AshPki.Certificate.issue(ctx.intermediate.id, csr_pem)
+    {:ok, a} = AshPki.Certificate.issue(ctx.intermediate.id, csr_pem, %{}, authorize?: false)
+    {:ok, b} = AshPki.Certificate.issue(ctx.intermediate.id, csr_pem, %{}, authorize?: false)
 
     assert a.id != b.id
     assert a.serial != b.serial

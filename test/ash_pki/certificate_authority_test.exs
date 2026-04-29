@@ -32,7 +32,7 @@ defmodule AshPki.CertificateAuthorityTest do
   test "get_by_name finds an existing CA" do
     Factories.fresh_root!("findable")
 
-    assert {:ok, ca} = AshPki.CertificateAuthority.get_by_name("findable")
+    assert {:ok, ca} = AshPki.CertificateAuthority.get_by_name("findable", authorize?: false)
     assert ca.name == "findable"
   end
 end

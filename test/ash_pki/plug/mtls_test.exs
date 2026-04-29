@@ -36,7 +36,7 @@ defmodule AshPki.Plug.MTLSTest do
   end
 
   test "revoked cert is rejected when require_known_certificate is true", ctx do
-    {:ok, _} = AshPki.Certificate.revoke(ctx.leaf, %{reason: :key_compromise})
+    {:ok, _} = AshPki.Certificate.revoke(ctx.leaf, %{reason: :key_compromise}, authorize?: false)
 
     conn =
       call_with_header(ctx.leaf.certificate_pem,
