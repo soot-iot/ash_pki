@@ -15,7 +15,7 @@ defmodule AshPki.Changes.IssueCertificate do
       ca_module =
         AshPki.Resource.Certificate.Info.pki_certificate_authority!(changeset.resource)
 
-      with {:ok, issuer} <- Ash.get(ca_module, issuer_id, authorize?: false),
+      with {:ok, issuer} <- Ash.get(ca_module, issuer_id, actor: AshPki.Actors.system(:issuer)),
            :ok <- ensure_active(issuer),
            {:ok, csr} <- decode_csr(csr_pem),
            true <- X509.CSR.valid?(csr) || {:error, :invalid_csr_signature},

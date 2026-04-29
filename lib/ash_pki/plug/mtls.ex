@@ -153,7 +153,7 @@ defmodule AshPki.Plug.MTLS do
       raw_cert: peer
     }
 
-    case cert_module.get_by_fingerprint(fingerprint, authorize?: false) do
+    case cert_module.get_by_fingerprint(fingerprint, actor: AshPki.Actors.system(:mtls_resolver)) do
       {:ok, %{status: :active} = cert} ->
         {:ok, %Actor{base | certificate_id: cert.id, issuer_id: cert.issuer_id}}
 

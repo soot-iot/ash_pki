@@ -29,7 +29,7 @@ defmodule AshPki.TrustStore do
     {:ok, cas} =
       ca_module
       |> Ash.Query.filter(status == :active)
-      |> Ash.read(authorize?: false)
+      |> Ash.read(actor: AshPki.Actors.system(:trust_loader))
 
     Enum.flat_map(cas, fn ca ->
       case X509.Certificate.from_pem(ca.certificate_pem || "") do
