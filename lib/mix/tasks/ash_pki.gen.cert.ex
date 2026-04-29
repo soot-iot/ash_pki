@@ -48,7 +48,9 @@ defmodule Mix.Tasks.AshPki.Gen.Cert do
 
     _ = AshPki.Persistence.load!(out)
 
-    {:ok, ca} = AshPki.CertificateAuthority.get_by_name(issuer_name)
+    actor = AshPki.Actors.system(:issuer)
+
+    {:ok, ca} = AshPki.CertificateAuthority.get_by_name(issuer_name, actor: actor)
 
     File.mkdir_p!(out)
 
@@ -57,11 +59,16 @@ defmodule Mix.Tasks.AshPki.Gen.Cert do
     csr_pem = X509.CSR.to_pem(csr)
 
     {:ok, cert} =
-      AshPki.Certificate.issue(ca.id, csr_pem, %{
-        template: template,
-        validity_days: validity_days,
-        subject_alt_names: sans
-      })
+      AshPki.Certificate.issue(
+        ca.id,
+        csr_pem,
+        %{
+          template: template,
+          validity_days: validity_days,
+          subject_alt_names: sans
+        },
+        actor: actor
+      )
 
     write!(out, "#{name}.key.pem", X509.PrivateKey.to_pem(private))
     write!(out, "#{name}.csr.pem", csr_pem)

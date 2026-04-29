@@ -37,7 +37,7 @@ defmodule AshPki.PersistenceTest do
   test "dump! omits non-active CAs", %{dir: dir} do
     keep = Factories.fresh_root!("kept")
     rotating = Factories.fresh_root!("rotating-out")
-    {:ok, _} = AshPki.CertificateAuthority.rotate(rotating)
+    {:ok, _} = AshPki.CertificateAuthority.rotate(rotating, authorize?: false)
 
     :ok = Persistence.dump!(dir)
 
@@ -57,10 +57,10 @@ defmodule AshPki.PersistenceTest do
     :ok = Persistence.dump!(dir)
 
     Factories.reset_ets!()
-    assert {:ok, []} = Ash.read(AshPki.CertificateAuthority)
+    assert {:ok, []} = Ash.read(AshPki.CertificateAuthority, authorize?: false)
 
     :ok = Persistence.load!(dir)
-    {:ok, restored} = AshPki.CertificateAuthority.get_by_name("round-trip")
+    {:ok, restored} = AshPki.CertificateAuthority.get_by_name("round-trip", authorize?: false)
 
     assert restored.id == original.id
     assert restored.fingerprint == original.fingerprint

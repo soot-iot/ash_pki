@@ -16,9 +16,24 @@ defmodule AshPki.Certificate do
     otp_app: :ash_pki,
     domain: AshPki.Domain,
     data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
     extensions: [AshPki.Resource.Certificate]
 
   ets do
     private? false
+  end
+
+  # Default policies (POLICY-SPEC §4.1). `:issuer` covers
+  # certificate issuance (CA load + leaf insert via the
+  # `IssueCertificate` change) and bulk import. `:mtls_resolver`
+  # covers the per-request fingerprint lookup. `:crl_publisher`
+  # covers the revoked-cert read for CRL generation.
+  policies do
+    policy always() do
+      access_type :strict
+      authorize_if actor_attribute_equals(:part, :issuer)
+      authorize_if actor_attribute_equals(:part, :mtls_resolver)
+      authorize_if actor_attribute_equals(:part, :crl_publisher)
+    end
   end
 end

@@ -23,7 +23,7 @@ defmodule AshPki.TrustStoreTest do
   test "active_cas/0 skips rotated CAs" do
     a = Factories.fresh_root!("still-active")
     rotated = Factories.fresh_root!("rotating")
-    {:ok, _} = AshPki.CertificateAuthority.rotate(rotated)
+    {:ok, _} = AshPki.CertificateAuthority.rotate(rotated, authorize?: false)
 
     fps = Enum.map(TrustStore.active_cas(), &AshPki.PKI.fingerprint/1)
     assert a.fingerprint in fps
