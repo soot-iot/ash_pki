@@ -54,6 +54,11 @@ defmodule AshPki.PoliciesTest do
                  actor: %AshPki.Actors.System{part: :stranger}
                )
     end
+
+    test "admin can read", %{intermediate: int} do
+      assert {:ok, ^int} =
+               Ash.get(AshPki.CertificateAuthority, int.id, actor: Actors.admin())
+    end
   end
 
   describe "AshPki.Certificate" do
@@ -86,6 +91,11 @@ defmodule AshPki.PoliciesTest do
     test "no actor is forbidden", %{leaf: leaf} do
       assert {:error, %Ash.Error.Forbidden{}} = Ash.get(AshPki.Certificate, leaf.id)
     end
+
+    test "admin can read", %{leaf: leaf} do
+      assert {:ok, ^leaf} =
+               Ash.get(AshPki.Certificate, leaf.id, actor: Actors.admin())
+    end
   end
 
   describe "AshPki.RevocationList" do
@@ -111,6 +121,11 @@ defmodule AshPki.PoliciesTest do
 
     test "no actor is forbidden", %{crl: crl} do
       assert {:error, %Ash.Error.Forbidden{}} = Ash.get(AshPki.RevocationList, crl.id)
+    end
+
+    test "admin can read", %{crl: crl} do
+      assert {:ok, ^crl} =
+               Ash.get(AshPki.RevocationList, crl.id, actor: Actors.admin())
     end
   end
 end
