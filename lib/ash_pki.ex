@@ -35,8 +35,7 @@ defmodule AshPki do
   @doc "Resource module for `CertificateAuthority` (operator override or library default)."
   @spec certificate_authority() :: module()
   def certificate_authority,
-    do:
-      Application.get_env(:ash_pki, :certificate_authority, AshPki.CertificateAuthority)
+    do: Application.get_env(:ash_pki, :certificate_authority, AshPki.CertificateAuthority)
 
   @doc "Resource module for `RevocationList` (operator override or library default)."
   @spec revocation_list() :: module()
