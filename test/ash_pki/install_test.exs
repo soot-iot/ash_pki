@@ -251,6 +251,29 @@ defmodule Mix.Tasks.AshPki.InstallTest do
       assert content =~ ~s|table("revocation_lists")|
     end
 
+    test "Certificate, CertificateAuthority, and RevocationList carry authorizer + admin bypass" do
+      result =
+        setup_project()
+        |> Igniter.compose_task("ash_pki.install", [])
+
+      for path <- [
+            "lib/test/certificate_authority.ex",
+            "lib/test/certificate.ex",
+            "lib/test/revocation_list.ex"
+          ] do
+        content = generated_source(result, path)
+
+        assert content =~ "authorizers: [Ash.Policy.Authorizer]",
+               "expected authorizer in #{path}"
+
+        assert content =~ "policies do",
+               "expected policies block in #{path}"
+
+        assert content =~ "bypass actor_attribute_equals(:role, :admin) do",
+               "expected admin bypass in #{path}"
+      end
+    end
+
     test "EnrollmentToken module is generated without a pki block" do
       result =
         setup_project()

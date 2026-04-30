@@ -191,6 +191,7 @@ if Code.ensure_loaded?(Igniter) do
         otp_app: :#{otp_app(igniter)},
         domain: AshPki.Domain,
         data_layer: AshPostgres.DataLayer,
+        authorizers: [Ash.Policy.Authorizer],
         extensions: [AshPki.Resource.CertificateAuthority]
 
       postgres do
@@ -201,6 +202,20 @@ if Code.ensure_loaded?(Igniter) do
       pki do
         certificate #{inspect(certificate)}
         revocation_list #{inspect(revocation_list)}
+      end
+
+      # Mirrors `AshPki.CertificateAuthority`'s default policies (POLICY-SPEC §4.1).
+      policies do
+        bypass actor_attribute_equals(:role, :admin) do
+          authorize_if always()
+        end
+
+        policy always() do
+          access_type :strict
+          authorize_if actor_attribute_equals(:part, :trust_loader)
+          authorize_if actor_attribute_equals(:part, :issuer)
+          authorize_if actor_attribute_equals(:part, :crl_publisher)
+        end
       end
       """
     end
@@ -224,6 +239,7 @@ if Code.ensure_loaded?(Igniter) do
         otp_app: :#{otp_app(igniter)},
         domain: AshPki.Domain,
         data_layer: AshPostgres.DataLayer,
+        authorizers: [Ash.Policy.Authorizer],
         extensions: [AshPki.Resource.Certificate]
 
       postgres do
@@ -233,6 +249,20 @@ if Code.ensure_loaded?(Igniter) do
 
       pki do
         certificate_authority #{inspect(certificate_authority)}
+      end
+
+      # Mirrors `AshPki.Certificate`'s default policies (POLICY-SPEC §4.1).
+      policies do
+        bypass actor_attribute_equals(:role, :admin) do
+          authorize_if always()
+        end
+
+        policy always() do
+          access_type :strict
+          authorize_if actor_attribute_equals(:part, :issuer)
+          authorize_if actor_attribute_equals(:part, :mtls_resolver)
+          authorize_if actor_attribute_equals(:part, :crl_publisher)
+        end
       end
       """
     end
@@ -257,6 +287,7 @@ if Code.ensure_loaded?(Igniter) do
         otp_app: :#{otp_app(igniter)},
         domain: AshPki.Domain,
         data_layer: AshPostgres.DataLayer,
+        authorizers: [Ash.Policy.Authorizer],
         extensions: [AshPki.Resource.RevocationList]
 
       postgres do
@@ -267,6 +298,19 @@ if Code.ensure_loaded?(Igniter) do
       pki do
         certificate_authority #{inspect(certificate_authority)}
         certificate #{inspect(certificate)}
+      end
+
+      # Mirrors `AshPki.RevocationList`'s default policies (POLICY-SPEC §4.1).
+      policies do
+        bypass actor_attribute_equals(:role, :admin) do
+          authorize_if always()
+        end
+
+        policy always() do
+          access_type :strict
+          authorize_if actor_attribute_equals(:part, :crl_publisher)
+          authorize_if actor_attribute_equals(:part, :trust_loader)
+        end
       end
       """
     end

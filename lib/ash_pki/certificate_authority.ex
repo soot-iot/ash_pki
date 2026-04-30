@@ -24,6 +24,10 @@ defmodule AshPki.CertificateAuthority do
   # resource (`MyApp.CertificateAuthority`) get their own policies
   # block; they widen the allow set for their roles.
   policies do
+    bypass actor_attribute_equals(:role, :admin) do
+      authorize_if always()
+    end
+
     policy always() do
       access_type :strict
       authorize_if actor_attribute_equals(:part, :trust_loader)

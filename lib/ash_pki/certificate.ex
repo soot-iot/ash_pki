@@ -29,6 +29,10 @@ defmodule AshPki.Certificate do
   # covers the per-request fingerprint lookup. `:crl_publisher`
   # covers the revoked-cert read for CRL generation.
   policies do
+    bypass actor_attribute_equals(:role, :admin) do
+      authorize_if always()
+    end
+
     policy always() do
       access_type :strict
       authorize_if actor_attribute_equals(:part, :issuer)
