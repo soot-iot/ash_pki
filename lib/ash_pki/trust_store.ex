@@ -26,10 +26,13 @@ defmodule AshPki.TrustStore do
   def active_cas(opts \\ []) do
     ca_module = Keyword.get(opts, :certificate_authority, @default_ca)
 
-    {:ok, cas} =
+    # If trust-store loading fails, mTLS validation cannot proceed —
+    # let it crash rather than swallowing the error and serving with
+    # an empty trust list.
+    cas =
       ca_module
       |> Ash.Query.filter(status == :active)
-      |> Ash.read(actor: AshPki.Actors.system(:trust_loader))
+      |> Ash.read!(actor: AshPki.Actors.system(:trust_loader))
 
     Enum.flat_map(cas, fn ca ->
       case X509.Certificate.from_pem(ca.certificate_pem || "") do

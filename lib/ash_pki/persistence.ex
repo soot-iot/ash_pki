@@ -30,10 +30,10 @@ defmodule AshPki.Persistence do
     ca_module = Keyword.get(opts, :certificate_authority, @default_ca)
     File.mkdir_p!(dir)
 
-    {:ok, cas} =
+    cas =
       ca_module
       |> Ash.Query.filter(status == :active)
-      |> Ash.read(actor: AshPki.Actors.system(:trust_loader))
+      |> Ash.read!(actor: AshPki.Actors.system(:trust_loader))
 
     payload = %{
       "version" => 1,
@@ -89,27 +89,22 @@ defmodule AshPki.Persistence do
   end
 
   defp insert_ca(ca_module, payload) do
-    {:ok, _} =
-      Ash.Seed.seed!(ca_module, %{
-        id: payload["id"],
-        name: payload["name"],
-        role: parse_role(payload["role"]),
-        parent_id: payload["parent_id"],
-        key_strategy: parse_strategy(payload["key_strategy"]),
-        key_descriptor: payload["key_descriptor"],
-        certificate_pem: payload["certificate_pem"],
-        subject_dn: payload["subject_dn"],
-        serial: payload["serial"],
-        fingerprint: payload["fingerprint"],
-        not_before: parse_dt(payload["not_before"]),
-        not_after: parse_dt(payload["not_after"]),
-        status: :active
-      })
-      |> wrap(ca_module)
+    Ash.Seed.seed!(ca_module, %{
+      id: payload["id"],
+      name: payload["name"],
+      role: parse_role(payload["role"]),
+      parent_id: payload["parent_id"],
+      key_strategy: parse_strategy(payload["key_strategy"]),
+      key_descriptor: payload["key_descriptor"],
+      certificate_pem: payload["certificate_pem"],
+      subject_dn: payload["subject_dn"],
+      serial: payload["serial"],
+      fingerprint: payload["fingerprint"],
+      not_before: parse_dt(payload["not_before"]),
+      not_after: parse_dt(payload["not_after"]),
+      status: :active
+    })
   end
-
-  defp wrap(%mod{} = ca, mod), do: {:ok, ca}
-  defp wrap(other, _mod), do: other
 
   defp parse_dt(nil), do: nil
 
