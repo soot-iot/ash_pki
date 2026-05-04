@@ -73,7 +73,7 @@ defmodule AshPki.Changes.PublishCRL do
   defp to_x509_reason(:aa_compromise), do: :aACompromise
 
   defp next_sequence(crl_module, ca_id) do
-    {:ok, all} = crl_module.for_ca(ca_id, actor: AshPki.Actors.system(:crl_publisher))
+    all = crl_module.for_ca!(ca_id, actor: AshPki.Actors.system(:crl_publisher))
 
     case Enum.map(all, & &1.sequence) do
       [] -> 1
@@ -88,7 +88,7 @@ defmodule AshPki.Changes.PublishCRL do
 
   defp supersede_previous(crl_module, ca_id, current_id) do
     actor = AshPki.Actors.system(:crl_publisher)
-    {:ok, all} = crl_module.for_ca(ca_id, actor: actor)
+    all = crl_module.for_ca!(ca_id, actor: actor)
 
     Enum.each(all, fn rl ->
       if rl.id != current_id and rl.status == :current do

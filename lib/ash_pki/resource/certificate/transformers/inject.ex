@@ -201,6 +201,11 @@ defmodule AshPki.Resource.Certificate.Transformers.Inject do
       Builder.add_new_action(dsl_state, :update, :revoke,
         description: "Mark a certificate revoked. CRL regeneration is a separate step.",
         accept: [],
+        # require_atomic?: false because:
+        #   1. the revoked_at SetAttribute uses a function closure
+        #      (&DateTime.utc_now/0), and
+        #   2. the policy authorizer injects a :before_action hook,
+        #      which independently disqualifies atomic execution.
         require_atomic?: false,
         arguments: [
           Builder.build_action_argument(:reason, :atom,
