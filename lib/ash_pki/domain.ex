@@ -11,6 +11,8 @@ defmodule AshPki.Domain do
     validate_config_inclusion?: false
 
   resources do
+    allow_unregistered? true
+
     resource AshPki.CertificateAuthority
     resource AshPki.Certificate
     resource AshPki.RevocationList
